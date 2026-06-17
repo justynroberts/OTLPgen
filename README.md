@@ -15,10 +15,38 @@ demo APM/service maps, or load-test an ingest pipeline.
 - **Templated identity.** Change `vars.platform` and every service name, tag, pod name,
   trace, and log line re-skins itself.
 
-## Quick start
+## Install
+
+Pre-built binaries live in [`dist/`](dist/). Grab the one for your platform with `curl` —
+this auto-detects OS/arch, downloads it as `otlpgen`, and makes it executable:
 
 ```bash
-# 1. Point at your backend
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')        # darwin | linux
+ARCH=$(uname -m); [ "$ARCH" = "x86_64" ] && ARCH=amd64; [ "$ARCH" = "aarch64" ] && ARCH=arm64
+curl -fsSL -o otlpgen \
+  "https://raw.githubusercontent.com/justynroberts/OTLPgen/main/dist/otlpgen-$OS-$ARCH"
+chmod +x otlpgen
+```
+
+Or pick a specific build directly:
+
+| Platform | Command |
+|---|---|
+| macOS (Apple Silicon) | `curl -fsSL -o otlpgen https://raw.githubusercontent.com/justynroberts/OTLPgen/main/dist/otlpgen-darwin-arm64 && chmod +x otlpgen` |
+| macOS (Intel) | `curl -fsSL -o otlpgen https://raw.githubusercontent.com/justynroberts/OTLPgen/main/dist/otlpgen-darwin-amd64 && chmod +x otlpgen` |
+| Linux (x86-64) | `curl -fsSL -o otlpgen https://raw.githubusercontent.com/justynroberts/OTLPgen/main/dist/otlpgen-linux-amd64 && chmod +x otlpgen` |
+| Linux (arm64) | `curl -fsSL -o otlpgen https://raw.githubusercontent.com/justynroberts/OTLPgen/main/dist/otlpgen-linux-arm64 && chmod +x otlpgen` |
+| Windows (x86-64) | `curl -fsSL -o otlpgen.exe https://raw.githubusercontent.com/justynroberts/OTLPgen/main/dist/otlpgen-windows-amd64.exe` |
+
+> On macOS, Gatekeeper may quarantine a downloaded binary. If it refuses to run, clear it with
+> `xattr -d com.apple.quarantine ./otlpgen`. Prefer building from source? See [Building](#building).
+
+## Quick start
+
+Once you have the `otlpgen` binary, you need just two things: an OTLP endpoint and a token.
+
+```bash
+# 1. Point at your backend (otlpgen reads these two env vars only)
 export OTEL_EXPORTER_OTLP_ENDPOINT="https://your-otlp-endpoint:443"
 export OTEL_API_KEY="your-token"
 
@@ -29,8 +57,9 @@ export OTEL_API_KEY="your-token"
 ./otlpgen --duration 10
 ```
 
-Download the binary for your platform from the [`dist/`](dist/) directory (or build it —
-see [Building](#building)).
+The default config sends an Elastic-style `Authorization: ApiKey <OTEL_API_KEY>` header. For a
+backend that needs a different header (Grafana, Honeycomb, New Relic, …), pass an override file
+with `--config` — see [Configuring for your vendor](#configuring-for-your-vendor).
 
 ## Usage
 
