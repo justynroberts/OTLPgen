@@ -1,5 +1,9 @@
 VERSION ?= v0.1.0
 LDFLAGS := -s -w -X main.version=$(VERSION)
+# -trimpath strips absolute build paths so binaries are bit-reproducible:
+# rebuilding the same source yields identical bytes (a clean `git status`),
+# which makes "is dist/ current?" answerable without spurious diffs.
+BUILDFLAGS := -trimpath -ldflags "$(LDFLAGS)"
 BIN     := otlpgen
 DIST    := dist
 
@@ -13,7 +17,7 @@ PLATFORMS := \
 .PHONY: build run print-config tidy clean dist
 
 build:
-	go build -ldflags "$(LDFLAGS)" -o $(BIN) .
+	go build $(BUILDFLAGS) -o $(BIN) .
 
 run: build
 	./$(BIN) --one-shot
@@ -33,7 +37,7 @@ dist:
 		out=$(DIST)/$(BIN)-$$os-$$arch$$ext; \
 		echo "building $$out"; \
 		GOOS=$$os GOARCH=$$arch CGO_ENABLED=0 \
-			go build -ldflags "$(LDFLAGS)" -o $$out . || exit 1; \
+			go build $(BUILDFLAGS) -o $$out . || exit 1; \
 	done
 	@echo "done -> $(DIST)/"
 
