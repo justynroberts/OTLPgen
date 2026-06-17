@@ -1,0 +1,4 @@
+# Local dev build (the cross-compiled dist/ binaries ARE committed for releases)
+/otlpgen
+*.out
+.DS_Store

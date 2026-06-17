@@ -1,0 +1,6 @@
+# Minimal override — rename the whole platform by changing one var.
+# Everything (service names, tags, pod names, trace names, log lines)
+# re-skins from `platform`. Run with: otlpgen --config examples/minimal.yaml
+vars:
+  platform: "checkout"
+  team: "storefront"

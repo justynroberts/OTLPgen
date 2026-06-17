@@ -1,0 +1,39 @@
+# Full reskin example — a fictional "acme" e-commerce platform.
+#
+# Shows the three override levers:
+#   1. vars        — re-skin identity (names, tags, cluster, region, registry)
+#   2. otlp        — point at a vendor + set auth headers (here: Grafana Cloud)
+#   3. services    — deep-merged: tweak one service without redefining the rest
+#
+# Run: otlpgen --config examples/acme-shop.yaml --duration 10
+
+vars:
+  platform: "acme"
+  team: "commerce"
+  env: "prod"
+  cluster: "acme-eu-1"
+  region: "eu-west-1"
+  namespace: "shop"
+  registry: "ghcr.io/acme"
+  version: "4.0.0"
+
+  # Override individual service names instead of the platform-derived default.
+  api: "acme-storefront"
+  processor: "acme-orders"
+  reconciliation: "acme-ledger"
+
+otlp:
+  # Grafana Cloud OTLP gateway (note the /otlp suffix — the tool appends /v1/*).
+  url: "${OTEL_EXPORTER_OTLP_ENDPOINT}"
+  environment: "{{env}}"
+  headers:
+    # Grafana Cloud uses Basic auth: base64("<instanceID>:<token>")
+    Authorization: "Basic ${GRAFANA_OTLP_TOKEN}"
+
+services:
+  # Deep-merge: bump just this service's log rate, leave everything else intact.
+  api:
+    rate_per_minute: 80
+  # Turn one service off entirely.
+  reconciliation:
+    enabled: false
