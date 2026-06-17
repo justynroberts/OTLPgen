@@ -61,8 +61,16 @@ export OTEL_API_KEY="your-token"
 ```
 
 The default config sends an Elastic-style `Authorization: ApiKey <OTEL_API_KEY>` header. For a
-backend that needs a different header (Grafana, Honeycomb, New Relic, …), pass an override file
-with `--config` — see [Configuring for your vendor](#configuring-for-your-vendor).
+backend that needs a different header (Grafana, Honeycomb, New Relic, …), set the standard
+`OTEL_EXPORTER_OTLP_HEADERS` env var — no override file needed:
+
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT="https://otlp-gateway-prod-us-east-2.grafana.net/otlp"
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic <base64(instanceID:token)>"
+./otlpgen --one-shot
+```
+
+See [Configuring for your vendor](#configuring-for-your-vendor) for per-vendor headers.
 
 ## Usage
 
@@ -93,22 +101,29 @@ OTLPgen sends standard OTLP/HTTP JSON. You only need to set two things: the **ba
 and the **auth header(s)**. The tool appends `/v1/logs`, `/v1/metrics`, `/v1/traces` to the
 base URL, so point the URL at the OTLP *root*, not at a signal path.
 
-There are two ways to configure auth:
+There are three ways to configure auth:
 
-**A. Environment variables** (quickest — works with the default `ApiKey` header):
+**A. The default `ApiKey` header** (Elastic-style — quickest if your backend matches):
 
 ```bash
 export OTEL_EXPORTER_OTLP_ENDPOINT="https://host:443"
-export OTEL_API_KEY="token"
+export OTEL_API_KEY="token"      # sent as: Authorization: ApiKey <token>
 ```
 
-> **Note:** otlpgen reads only these two variables. It does **not** read the OpenTelemetry
-> SDK variables `OTEL_EXPORTER_OTLP_HEADERS` or `OTEL_EXPORTER_OTLP_PROTOCOL` — a header set
-> there is silently ignored and the wire format is always OTLP/HTTP **JSON**. If your vendor
-> needs a header other than `Authorization: ApiKey <key>` (e.g. Grafana's `Basic`, Honeycomb's
-> `x-honeycomb-team`), use an override file (option B) — not those env vars.
+**B. Arbitrary headers via env** (vendor-agnostic — the standard OTel SDK variable):
 
-**B. An override file** (when the vendor needs a different header name):
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT="https://host:443"
+# Comma-separated key=value pairs; merges over (and overrides) config headers.
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic <base64(id:token)>"
+export OTEL_EXPORTER_OTLP_HEADERS="x-honeycomb-team=<key>,x-honeycomb-dataset=otlpgen"
+```
+
+> `%XX` escapes in header values are percent-decoded (so `Basic%20abc` → `Basic abc`); a `+`
+> is left intact so base64 tokens survive. The wire format is always OTLP/HTTP **JSON** —
+> `OTEL_EXPORTER_OTLP_PROTOCOL` is ignored.
+
+**C. An override file** (when you also want to template the platform, or keep config in-repo):
 
 ```yaml
 # vendor.yaml

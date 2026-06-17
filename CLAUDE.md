@@ -46,7 +46,9 @@ Four `package main` files, no sub-packages:
   to typed `Config`**. The config is parsed twice: first into `map[string]any` so it can be
   merged and var-substituted generically, then re-marshaled and decoded into the typed
   `Config`. `--print-config` prints those re-marshaled bytes. `${ENV}` references in the OTLP
-  URL and headers are resolved separately, at the end of `LoadConfig`, at runtime.
+  URL and headers are resolved separately, at the end of `LoadConfig`, at runtime — as is the
+  standard `OTEL_EXPORTER_OTLP_HEADERS` var (`parseOTLPHeaders`), which merges over and
+  overrides config headers so auth can come purely from the env.
 - **`generate.go`** — the `Generator`. Turns the typed config into OTLP/JSON payloads
   (`buildOTLPLogs`, `generateMetrics`, `generateTrace`). Uses weighted random selection
   (`weightedPick`) for log patterns and trace templates, and `±15%`/`±30%` jitter for metric
@@ -54,9 +56,7 @@ Four `package main` files, no sub-packages:
   memory** before generation.
 - **`otlp.go`** — the `Client`. Marshals a payload to JSON and POSTs to `baseURL+endpoint`;
   success is any **2xx** (backends return 200/202/204 — e.g. Grafana acks logs with 204).
-  `verify_ssl: false` disables TLS verification. Only `OTEL_EXPORTER_OTLP_ENDPOINT` and
-  `OTEL_API_KEY` are read from the environment — the OTel SDK's `OTEL_EXPORTER_OTLP_HEADERS`
-  / `_PROTOCOL` are **not**; non-default auth needs a `--config` override.
+  `verify_ssl: false` disables TLS verification.
 - **`main.go`** — CLI flags, logging helpers, `Stats` accounting, and `Generator.Run` (the
   per-second emit loop; `--one-shot` emits one larger batch and exits, otherwise it loops
   every second until `--duration` elapses or SIGINT/SIGTERM).
@@ -82,7 +82,9 @@ Two independent substitution systems, do not confuse them:
   in the config tree (`substituteTree`). Vars may reference other vars (`resolveVars` iterates
   to a fixed point). This is what makes changing `vars.platform` re-skin the whole platform.
 - **`${ENV}`** — resolved from OS environment variables, but **only** for `otlp.url` and
-  `otlp.headers` values (`resolveEnv`). Used for secrets/endpoints.
+  `otlp.headers` values (`resolveEnv`). Used for secrets/endpoints. Separately, the standard
+  `OTEL_EXPORTER_OTLP_HEADERS` (`key=value,...`, `%XX`-decoded but `+` preserved) is merged
+  over the resolved headers; `OTEL_EXPORTER_OTLP_PROTOCOL` is ignored (always JSON).
 
 There is also a third, separate mechanism: log `templates` use `{placeholder}` (single brace),
 filled from the pattern's `attributes` pools at generation time in `generateLogEntry`.

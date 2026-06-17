@@ -3,6 +3,7 @@ package main
 import (
 	_ "embed"
 	"fmt"
+	"net/url"
 	"os"
 	"regexp"
 	"sort"
@@ -141,6 +142,21 @@ func LoadConfig(overridePath string) (*Config, []byte, error) {
 	for k, v := range cfg.OTLP.Headers {
 		cfg.OTLP.Headers[k] = resolveEnv(v)
 	}
+	// The standard OTel SDK var OTEL_EXPORTER_OTLP_HEADERS merges over (and
+	// overrides) config headers — so auth can be supplied purely from the env
+	// without an override file.
+	if env := os.Getenv("OTEL_EXPORTER_OTLP_HEADERS"); env != "" {
+		if cfg.OTLP.Headers == nil {
+			cfg.OTLP.Headers = map[string]string{}
+		}
+		for k, v := range parseOTLPHeaders(env) {
+			cfg.OTLP.Headers[k] = v
+		}
+	}
+	// Endpoint may also come from the standard OTel var.
+	if cfg.OTLP.URL == "" {
+		cfg.OTLP.URL = strings.TrimRight(os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"), "/")
+	}
 	// Fall back to the map id when a service omits an explicit name.
 	for id, svc := range cfg.Services {
 		if svc.Name == "" {
@@ -257,4 +273,30 @@ func resolveEnv(s string) string {
 	return envRe.ReplaceAllStringFunc(s, func(m string) string {
 		return os.Getenv(envRe.FindStringSubmatch(m)[1])
 	})
+}
+
+// parseOTLPHeaders parses the OTel SDK's OTEL_EXPORTER_OTLP_HEADERS format —
+// comma-separated "key=value" pairs with optional whitespace, e.g.
+// "Authorization=Basic abc,x-team=42". Per the spec, values are percent-encoded,
+// so %XX escapes are decoded; '+' is left as-is so base64 tokens (which use it)
+// are not mangled.
+func parseOTLPHeaders(s string) map[string]string {
+	out := map[string]string{}
+	for _, pair := range strings.Split(s, ",") {
+		k, v, ok := strings.Cut(pair, "=")
+		if !ok {
+			continue
+		}
+		k, v = strings.TrimSpace(k), strings.TrimSpace(v)
+		if dk, err := url.PathUnescape(k); err == nil {
+			k = dk
+		}
+		if dv, err := url.PathUnescape(v); err == nil {
+			v = dv
+		}
+		if k != "" {
+			out[k] = v
+		}
+	}
+	return out
 }
