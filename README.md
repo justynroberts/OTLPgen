@@ -17,15 +17,18 @@ demo APM/service maps, or load-test an ingest pipeline.
 
 ## Install
 
-Pre-built binaries live in [`dist/`](dist/). Grab the one for your platform with `curl` —
-this auto-detects OS/arch, downloads it as `otlpgen`, and makes it executable:
+One line — detects your OS/arch, downloads the matching binary into the current directory as
+`otlpgen`, and makes it runnable:
 
 ```bash
-OS=$(uname -s | tr '[:upper:]' '[:lower:]')        # darwin | linux
-ARCH=$(uname -m); [ "$ARCH" = "x86_64" ] && ARCH=amd64; [ "$ARCH" = "aarch64" ] && ARCH=arm64
-curl -fsSL -o otlpgen \
-  "https://raw.githubusercontent.com/justynroberts/OTLPgen/main/dist/otlpgen-$OS-$ARCH"
-chmod +x otlpgen
+curl -fsSL https://raw.githubusercontent.com/justynroberts/OTLPgen/main/install.sh | sh
+```
+
+Install into your `PATH` instead, or pin a release tag:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/justynroberts/OTLPgen/main/install.sh | BINDIR=/usr/local/bin sh
+curl -fsSL https://raw.githubusercontent.com/justynroberts/OTLPgen/main/install.sh | REF=v0.1.0 sh
 ```
 
 Or pick a specific build directly:
