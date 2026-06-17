@@ -29,7 +29,7 @@ func NewClient(baseURL string, headers map[string]string, verifySSL bool) *Clien
 }
 
 // Send marshals payload to JSON and POSTs it to baseURL+endpoint.
-// Returns true on a 200/202 response.
+// Returns true on any 2xx response.
 func (c *Client) Send(endpoint string, payload any) bool {
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -54,7 +54,9 @@ func (c *Client) Send(endpoint string, payload any) bool {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusAccepted {
+	// Any 2xx is an OTLP success. Backends vary: 200 (OTLP spec), 202, or 204
+	// (Grafana's gateway acks logs with No Content).
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return true
 	}
 	snippet, _ := io.ReadAll(io.LimitReader(resp.Body, 300))

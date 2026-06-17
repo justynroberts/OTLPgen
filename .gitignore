@@ -2,3 +2,8 @@
 /otlpgen
 *.out
 .DS_Store
+
+# Local run helpers that hold live credentials — never commit these.
+# A sanitized template lives in examples/grafana.yaml.
+/dist/run.sh
+/dist/grafana.yaml

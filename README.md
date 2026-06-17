@@ -70,6 +70,12 @@ export OTEL_EXPORTER_OTLP_ENDPOINT="https://host:443"
 export OTEL_API_KEY="token"
 ```
 
+> **Note:** otlpgen reads only these two variables. It does **not** read the OpenTelemetry
+> SDK variables `OTEL_EXPORTER_OTLP_HEADERS` or `OTEL_EXPORTER_OTLP_PROTOCOL` — a header set
+> there is silently ignored and the wire format is always OTLP/HTTP **JSON**. If your vendor
+> needs a header other than `Authorization: ApiKey <key>` (e.g. Grafana's `Basic`, Honeycomb's
+> `x-honeycomb-team`), use an override file (option B) — not those env vars.
+
 **B. An override file** (when the vendor needs a different header name):
 
 ```yaml
@@ -224,3 +230,5 @@ Cross-compilation targets: macOS (arm64/amd64), Linux (amd64/arm64), Windows (am
 - All numeric IDs and values are randomized within configured ranges; nothing is real data.
 - `--chaos` amplifies error-level log weights, failure-trace weights, and error/latency/
   resource metric baselines in memory — useful for triggering alerts on demand.
+- Any **2xx** response counts as a successful send. Backends differ: 200 (the OTLP spec),
+  202, or 204 (Grafana's gateway acks logs with No Content) are all treated as delivered.
